@@ -2,3 +2,30 @@ node_modules/
 dist/
 .DS_Store
 *.log
+
+# Backups
+*.backup-*
+*.pre-*-backup
+*.v3-backup
+*.v4-backup
+*.v4-before-pipeline
+*.streamlined-backup
+backup.js
+ekstaBackup.js
+index2.html
+
+# Scratch / experiments
+Shit/
+_splicer.py
+sketch.html
+
+# Loose images not in public/
+mol.jpg
+papertexture2.jpg
+photos/
+
+# Loose copies of public/ assets
+BeerCan.png
+BeerCan2.png
+labeltexture.jpg
+skabelon.svg

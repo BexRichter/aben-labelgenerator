@@ -9,9 +9,26 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "ccapture.js": "^1.1.0",
+    "chroma-js": "^3.2.0",
+    "culori": "^4.0.2",
+    "d3-delaunay": "^6.0.4",
+    "fast-average-color": "^9.5.0",
+    "glsl-noise": "^0.0.0",
+    "glslify": "^7.1.1",
     "gsap": "^3.12.2",
-    "p5": "^1.7.0",
-    "three": "^0.160.0"
+    "image-js": "^1.4.0",
+    "jspdf": "^4.2.0",
+    "lil-gui": "^0.21.0",
+    "node-vibrant": "^4.0.4",
+    "open-simplex-noise": "^2.5.0",
+    "p5": "^1.11.11",
+    "p5.brush": "^1.1.4",
+    "regl": "^2.1.1",
+    "simplex-noise": "^4.0.3",
+    "three": "^0.160.0",
+    "twgl.js": "^7.0.0",
+    "voronoi": "^1.0.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.16",

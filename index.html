@@ -1,62 +1,1169 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Åben Brewery — Label Generator</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ÅBEN · Labelgenerator</title>
+  <style>
+    :root {
+      --panel: 420px;
+      --bg: #eff0ef;
+      --panel-bg: #f5f0eb;
+      --fg: #2a2420;
+      --accent: #a9a9a9;
+      --dim: #8a8078;
+      --border: rgba(0,0,0,0.08);
+      --gradient-color: #5bb8e8;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font: 11px/1.5 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      display: flex;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── Panel ─── */
+    #panel {
+      width: var(--panel);
+      min-width: var(--panel);
+      height: 100vh;
+      overflow-y: auto;
+      padding: 24px 32px;
+      background: #e8e3de;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0,0,0,0.1) transparent;
+    }
+    #panel::-webkit-scrollbar { width: 4px; }
+    #panel::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+
+    /* Gradient canvas behind circles */
+    #gradient-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Logo */
+    #logo {
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    #logo img {
+      height: 40px;
+      width: auto;
+    }
+
+    /* Primary beer selector - bigger */
+    .beer-selector {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 12px;
+    }
+    .beer-selector select {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: #a9a9a9;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #fff;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+    }
+    .beer-selector select:hover {
+      background-color: #999;
+    }
+    .beer-selector select option {
+      background: #a9a9a9;
+      color: #fff;
+      padding: 12px;
+    }
+
+    /* Sections */
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0 6px;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 500;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--dim);
+      position: relative;
+      z-index: 1;
+    }
+    .section-head .arrow { 
+      transition: transform .2s; 
+      font-size: 8px;
+      opacity: 0.5;
+    }
+    .section-head.collapsed .arrow { transform: rotate(-90deg); }
+    .section-body { overflow: visible; transition: max-height .25s ease; position: relative; z-index: 1; }
+    .section-body.collapsed { max-height: 0 !important; overflow: hidden; }
+
+    /* Circle slider row */
+    .circle-row {
+      display: flex;
+      align-items: center;
+      height: 48px;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+    }
+    .circle-row .label-left,
+    .circle-row .label-right {
+      font-size: 9px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--dim);
+      flex-shrink: 0;
+    }
+    .circle-row .label-left { 
+      width: 110px;
+      text-align: right; 
+    }
+    .circle-row .label-right { 
+      width: 70px;
+      text-align: left; 
+    }
+    
+    .circle-track {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      padding: 0 4px;
+    }
+    .circle-track::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      background: rgba(0,0,0,0.15);
+    }
+    .circle-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--fg);
+      cursor: pointer;
+      position: relative;
+      z-index: 2;
+      transition: all 0.2s ease;
+    }
+    .circle-dot:hover {
+      transform: scale(1.3);
+    }
+    .circle-dot.active {
+      width: 16px;
+      height: 16px;
+      background: #a9a9a9;
+    }
+
+    /* Pill buttons for left/right labels */
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      background: rgba(0,0,0,0.04);
+      border-radius: 20px;
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--dim);
+      cursor: default;
+    }
+
+    /* Traditional rows (for dropdowns, etc) */
+    .row { 
+      display: flex; 
+      align-items: center; 
+      height: 36px; 
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .row label { 
+      width: 90px; 
+      flex-shrink: 0; 
+      font-size: 10px; 
+      color: var(--fg);
+      font-weight: 400;
+    }
+    .row input[type=range] { 
+      flex: 1; 
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(0,0,0,0.06);
+      height: 2px; 
+      border: none;
+      outline: none;
+      cursor: pointer;
+      border-radius: 2px;
+    }
+    .row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #a9a9a9;
+      cursor: pointer;
+      border: none;
+    }
+    .row input[type=range]::-moz-range-track {
+      background: rgba(0,0,0,0.06);
+      height: 2px;
+      border: none;
+    }
+    .row input[type=range]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #a9a9a9;
+      cursor: pointer;
+      border: none;
+    }
+    .row .val { 
+      width: 32px; 
+      text-align: right; 
+      font-size: 9px; 
+      color: var(--dim); 
+      font-variant-numeric: tabular-nums;
+    }
+    .sublabel { display: none; }
+
+    /* Select */
+    .row select {
+      flex: 1;
+      background: rgba(255,255,255,0.5);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 10px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: #a9a9a9;
+      color: #fff;
+      transition: all .15s;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      position: relative;
+      z-index: 1;
+    }
+    .btn:hover { background: #999; }
+    .btn.primary { 
+      background: #a9a9a9; 
+      color: #fff; 
+    }
+    .btn.primary:hover { background: #999; }
+
+    /* Toggle */
+    .toggle { position: relative; width: 44px; height: 24px; cursor: pointer; }
+    .toggle input { display: none; }
+    .toggle span {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.15);
+      transition: .2s;
+    }
+    .toggle span::after {
+      content: '';
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      transition: .2s;
+    }
+    .toggle input:checked+span { background: var(--accent); }
+    .toggle input:checked+span::after { transform: translateX(20px); }
+
+    /* Colour pickers */
+    .color-row { display: flex; gap: 6px; align-items: center; padding: 4px 0; position: relative; z-index: 1; }
+    .color-row label { width: 28px; font-size: 9px; color: var(--dim); text-align: right; }
+    .color-row input[type=color] {
+      -webkit-appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      width: 28px;
+      height: 20px;
+      cursor: pointer;
+      background: transparent;
+    }
+    .color-row input[type=color]::-webkit-color-swatch-wrapper { padding: 1px; }
+    .color-row input[type=color]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+    /* Palette swatches */
+    .palette-grid { display: flex; flex-wrap: wrap; gap: 3px; padding: 4px 0 6px; }
+    .pal {
+      width: 28px;
+      height: 14px;
+      border-radius: 2px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: .15s;
+    }
+    .pal.active, .pal:hover { border-color: #a9a9a9; }
+
+    /* Res group */
+    .res-group { display: flex; gap: 4px; flex-wrap: wrap; padding: 4px 0; }
+    .res-btn {
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.2);
+      color: var(--dim);
+      transition: .15s;
+    }
+    .res-btn.active { 
+      border-color: #a9a9a9; 
+      color: #a9a9a9; 
+      background: rgba(255,255,255,0.4); 
+    }
+    .res-btn:hover { border-color: #a9a9a9; }
+
+    /* Export group */
+    .export-group { display: flex; gap: 4px; padding: 6px 0; flex-wrap: wrap; }
+
+    /* Export button top right */
+    .export-top-btn {
+      padding: 12px 24px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: #a9a9a9;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      transition: background 0.2s;
+    }
+    .export-top-btn:hover {
+      background: #999;
+    }
+
+    /* Template selector (top-right bar) */
+    .top-bar {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tpl-group {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      background: rgba(42,42,42,0.65);
+      border-radius: 6px;
+      padding: 4px 6px;
+    }
+    .tpl-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.50);
+      margin-right: 4px;
+      user-select: none;
+    }
+    .tpl-btn {
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      background: #7a7a7a;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      transition: all 0.15s;
+    }
+    .tpl-btn:hover {
+      background: #666;
+    }
+    .tpl-btn.active {
+      background: #a9a9a9;
+      color: #fff;
+    }
+
+    /* ─── Canvas area ─── */
+    #canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      position: relative;
+      overflow: hidden;
+    }
+    #canvas-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #canvas-container canvas { border-radius: 4px; }
+    
+    /* Composition view */
+    #composition-view {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+    }
+    #composition-view.active {
+      display: flex;
+    }
+    #composition-view canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 2px;
+    }
+    #canvas-container.hidden { display: none; }
+
+    /* ─── Responsive: larger screens ─── */
+    @media (min-width: 1600px) {
+      #composition-view { padding: 32px; }
+      .top-bar { top: 28px; right: 28px; gap: 8px; }
+    }
+    @media (min-width: 1920px) {
+      #composition-view { padding: 40px; }
+      .top-bar { top: 32px; right: 32px; }
+    }
+
+    /* ─── 3D View ─── */
+    #three-view {
+      display: none;
+      position: absolute;
+      inset: 0;
+      flex-direction: column;
+      background: #141414;
+      z-index: 10;
+    }
+    #three-view.active { display: flex; }
+
+    #three-canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    #three-canvas-wrap canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* Gallery strip at bottom */
+    #three-gallery {
+      display: none;
+      gap: 8px;
+      padding: 12px 20px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(10px);
+      overflow-x: auto;
+      align-items: center;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.12) transparent;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    #three-gallery::-webkit-scrollbar { height: 3px; }
+    #three-gallery::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius:2px; }
+
+    .g-item {
+      flex-shrink: 0;
+      cursor: pointer;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: border-color .18s, transform .18s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding-bottom: 4px;
+      background: rgba(255,255,255,0.04);
+    }
+    .g-item:hover   { border-color: rgba(244,168,124,0.6); transform: scale(1.06); }
+    .g-item.active  { border-color: #f4a87c; }
+    .g-item img     { width: 80px; height: 50px; object-fit: cover; display: block; }
+    .g-item span {
+      font-size: 7px;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+      padding: 0 6px;
+    }
+    .g-item.active span { color: #f4a87c; }
+
+    /* Live pill */
+    .g-live {
+      flex-shrink: 0;
+      border: 2px solid #f4a87c;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      background: rgba(244,168,124,0.10);
+      transition: transform .18s;
+    }
+    .g-live:hover    { transform: scale(1.06); }
+    .g-live.active   { background: rgba(244,168,124,0.22); }
+    .g-live .live-label {
+      font-size: 7px;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      color: #f4a87c;
+    }
+    .g-live .live-dot-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 9px;
+      color: rgba(255,255,255,0.6);
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #f4a87c;
+      flex-shrink: 0;
+      animation: livepulse 1.5s infinite;
+    }
+    @keyframes livepulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.3; transform: scale(0.7); }
+    }
+
+    /* 3D tab button in top-bar */
+    .btn-3d {
+      padding: 12px 24px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: #a9a9a9;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      transition: background .2s;
+    }
+    .btn-3d:hover { background: #999; }
+    .btn-3d.active {
+      background: #7a7a7a;
+      color: #fff;
+    }
+
+    /* Hint in the 3D canvas */
+    #three-hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 8px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.2);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body>
 
-    <div class="container mx-auto px-4 py-8">
+<!-- ═══════ PANEL ═══════ -->
+<div id="panel">
+  <canvas id="gradient-canvas"></canvas>
+  <div id="logo"><img src="/åbenlogo.svg" alt="ÅBEN" style="width:100%;height:auto;max-width:100px;"></div>
 
-        <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 class="text-5xl font-black tracking-tight text-gray-900 mb-1">ÅBEN</h1>
-            <p class="text-lg text-gray-500 uppercase tracking-widest">Brewery — Label Generator</p>
-        </header>
+  <!-- ─── Primary Øltype Selector ─── -->
+  <div class="beer-selector">
+    <select id="beer-sel">
+      <option>Fruited Berliner Weisse</option><option>Imperial Stout</option><option>IPA</option>
+      <option>IPA – New England / Hazy</option><option>Triple IPA – New England / Hazy</option>
+      <option>Pastry Stout</option><option>Brown Ale</option><option>Wheat Beer – Hefeweizen</option>
+      <option>Smoked Beer</option><option>German Pilsner</option>
+    </select>
+  </div>
 
-        <!-- Mode switcher -->
-        <div class="bg-white rounded-xl shadow p-5 mb-6">
-            <div class="flex gap-4 justify-center">
-                <button id="p5-mode"
-                    class="mode-btn active px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all">
-                    ✏️  2D Label (p5.js)
-                </button>
-                <button id="three-mode"
-                    class="mode-btn px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-green-600 hover:text-white transition-all">
-                    📦  3D Product (Three.js)
-                </button>
-            </div>
-        </div>
+  <!-- ─── MASTER ─── -->
+  <div class="section-head">Master <span class="arrow">▼</span></div>
+  <div class="section-body" id="sec-master">
+    <div class="row"><label>Alkohol %</label>
+      <input type="range" id="abv" min="0.5" max="12" step="0.1" value="5.0"><span class="val">5.0</span></div>
+    <div class="row"><label>EBC</label>
+      <input type="range" id="ebc" min="3" max="30" step="1" value="15"><span class="val">15</span></div>
+    <div class="row"><label>Tæthed</label>
+      <input type="range" id="struktur" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Fylde</label>
+      <input type="range" id="krop" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Vægge</label>
+      <input type="range" id="membran" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Kaos</label>
+      <input type="range" id="gaering" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Huller</label>
+      <input type="range" id="kulsyre" min="0" max="1" step="0.01" value="0.30"><span class="val">0.30</span></div>
+    <div class="row"><label>Tråde</label>
+      <input type="range" id="filamenter" min="0" max="1" step="0.01" value="0.00"><span class="val">0.00</span></div>
+    <div class="row"><label>Udtryk</label>
+      <input type="range" id="udtryk" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+  </div>
 
-        <!-- Canvas area -->
-        <div class="bg-white rounded-xl shadow p-6">
-            <div id="canvas-container" class="flex justify-center items-center"></div>
-            <div id="three-container"  class="hidden flex justify-center items-center"></div>
-        </div>
+  <!-- ─── MORFOLOGI ─── -->
+  <div class="section-head collapsed">Morfologi <span class="arrow">▼</span></div>
+  <div class="section-body collapsed" id="sec-morph">
+    <div class="row"><label>Masse</label>
+      <input type="range" id="m_mass" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Sammensmeltning</label>
+      <input type="range" id="m_connectivity" min="0" max="1" step="0.01" value="0.00"><span class="val">0.00</span></div>
+    <div class="row"><label>Perforering</label>
+      <input type="range" id="m_perforation" min="0" max="1" step="0.01" value="0.00"><span class="val">0.00</span></div>
+    <div class="row"><label>Retning</label>
+      <input type="range" id="m_aniso" min="0" max="1" step="0.01" value="0.00"><span class="val">0.00</span></div>
+    <div class="row"><label>Opløsning</label>
+      <input type="range" id="m_membrane_break" min="0" max="1" step="0.01" value="0.00"><span class="val">0.00</span></div>
+    <div class="row"><label>Organisk</label>
+      <input type="range" id="m_field_blend" min="0" max="1" step="0.01" value="0.00"><span class="val">0.00</span></div>
+  </div>
 
-        <!-- Design controls -->
-        <div class="bg-white rounded-xl shadow p-6 mt-6">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">Design Controls</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-2">Background</label>
-                    <input type="color" id="bg-color" class="w-full h-10 rounded cursor-pointer border-2 border-gray-200" value="#0d0d0d">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-2">Primary Colour</label>
-                    <input type="color" id="primary-color" class="w-full h-10 rounded cursor-pointer border-2 border-gray-200" value="#f59e0b">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-2">Size — <span id="size-label">150</span></label>
-                    <input type="range" id="size-slider" min="50" max="300" value="150" class="w-full accent-blue-600">
-                </div>
-            </div>
-        </div>
+  <!-- ─── AVANCERET ─── -->
+  <div class="section-head collapsed">Avanceret <span class="arrow">▼</span></div>
+  <div class="section-body collapsed" id="sec-adv">
+    <div class="row"><label>Form</label>
+      <input type="range" id="form" min="0" max="1" step="0.01" value="0.00"><span class="val">0.00</span></div>
+    <div class="row"><label>Bånd</label>
+      <input type="range" id="kanal" min="-1" max="1" step="0.01" value="0.00"><span class="val">0.00</span></div>
+    <div class="row"><label>Størrelse</label>
+      <input type="range" id="d_cell_size" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Forvrængning</label>
+      <input type="range" id="d_warp_amt" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Frekvens</label>
+      <input type="range" id="d_warp_freq" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Fylde</label>
+      <input type="range" id="d_fill" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Blødhed</label>
+      <input type="range" id="d_softness" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Stræk</label>
+      <input type="range" id="d_stretch" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Porer</label>
+      <input type="range" id="d_voids" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Netværk</label>
+      <input type="range" id="d_threads" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+    <div class="row"><label>Glow</label>
+      <input type="range" id="d_glow" min="0" max="1" step="0.01" value="0.50"><span class="val">0.50</span></div>
+  </div>
 
+  <!-- ─── Farver ─── -->
+  <div class="section-head">Farver <span class="arrow">▼</span></div>
+  <div class="section-body" id="sec-col">
+    <div class="palette-grid" id="palettes"></div>
+    <div class="color-row">
+      <label>Celle</label><input type="color" id="c1" value="#ff00cc">
+      <label>Mem</label><input type="color" id="c2" value="#ff6600">
+      <label>Knude</label><input type="color" id="c3" value="#00ff44">
+      <label>Bag</label><input type="color" id="c4" value="#050005">
     </div>
+    <div class="row" style="margin-top:4px">
+      <label>Negativ</label>
+      <label class="toggle"><input type="checkbox" id="neg-toggle"><span></span></label>
+    </div>
+    <div class="row" id="neg-mode-row" style="display:none">
+      <label>Tilstand</label>
+      <select id="neg-mode">
+        <option value="0">Fuld invertering</option>
+        <option value="1">Farverotation 180°</option>
+        <option value="2">Komplementær</option>
+      </select>
+    </div>
+  </div>
 
-    <!-- Vite entry point (bundles everything locally) -->
-    <script type="module" src="/main.js"></script>
+  <!-- ─── Label Farver ─── -->
+  <div class="section-head">Label Farver <span class="arrow">▼</span></div>
+  <div class="section-body" id="sec-label-col">
+    <div class="color-row">
+      <label>Form</label><input type="color" id="lc-shape" value="#ff0000">
+      <label>A'er</label><input type="color" id="lc-letters" value="#ff7ec4">
+      <label>Tekst</label><input type="color" id="lc-text" value="#ffffff">
+      <label>Logo</label><input type="color" id="lc-logo" value="#ffffff">
+      <label>Streg</label><input type="color" id="lc-stroke" value="#ff7ec4">
+    </div>
+  </div>
+
+  <!-- ─── Frø / Randomize ─── -->
+  <div class="section-head">Generering <span class="arrow">▼</span></div>
+  <div class="section-body" id="sec-gen">
+    <div class="row"><label>Frø (seed)</label>
+      <input type="range" id="seed" min="1" max="9999" step="1" value="42"><span class="val">42</span></div>
+    <div class="sublabel">Ændrer cellelayout — samme indstillinger, nyt mønster</div>
+    <div style="padding:6px 0">
+      <button class="btn primary" id="btn-rand" style="width:100%">⟳ &nbsp;Randomisér (kontrolleret)</button>
+    </div>
+    <div class="sublabel" style="margin-left:0; text-align:center; color:#555;">
+      Varierer seed + parametre indenfor øltypen
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════ CANVAS ═══════ -->
+<div id="canvas-area">
+  <div class="top-bar">
+    <div class="tpl-group">
+      <span class="tpl-label">Template</span>
+      <button class="tpl-btn active" data-tpl="Label1">1</button>
+      <button class="tpl-btn"        data-tpl="Label2">2</button>
+      <button class="tpl-btn"        data-tpl="Label3">3</button>
+      <button class="tpl-btn"        data-tpl="Label4">4</button>
+    </div>
+    <button class="btn-3d" id="btn-3d-view">VIEW IN 3D</button>
+    <button class="export-top-btn" id="btn-png">PNG</button>
+    <button class="export-top-btn" id="btn-pdf">EKSPORTER LABEL (PDF)</button>
+  </div>
+  <div id="canvas-container" class="hidden"></div>
+  <div id="composition-view" class="active"></div>
+
+  <!-- ═══════ 3D VIEW ═══════ -->
+  <div id="three-view">
+    <div id="three-canvas-wrap">
+      <!-- Three.js canvas injected here by three-view.js -->
+      <div id="three-hint">Træk for at rotere &nbsp;·&nbsp; Scroll for at zoome</div>
+    </div>
+    <div id="three-gallery">
+      <!-- Gallery items injected by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ APP SCRIPT ═══════ -->
+<script type="module">
+  import './sketch.js';
+
+  const P     = window.SOUR_PARAMS;
+  const BEERS = window.SOUR_BEERS;
+  const PAL   = window.SOUR_PALETTES;
+
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+
+  /* ─── All sliders: [id, paramKey, triggerRegen] ─── */
+  const SLIDERS = [
+    // Master
+    ['abv',           'abv',            true],
+    ['ebc',           'ebc',            false],
+    ['struktur',      'struktur',       true],
+    ['krop',          'krop',           true],
+    ['membran',       'membran',        false],
+    ['gaering',       'gaering',        true],
+    ['kulsyre',       'kulsyre',        true],
+    ['filamenter',    'filamenter',     false],
+    ['udtryk',        'udtryk',         true],
+    // Morfologi
+    ['m_mass',           'mMass',           false],
+    ['m_connectivity',   'mConnectivity',   false],
+    ['m_perforation',    'mPerforation',    false],
+    ['m_aniso',          'mAniso',          true],
+    ['m_membrane_break', 'mMembraneBreak',  false],
+    ['m_field_blend',    'mFieldBlend',     false],
+    // Avanceret (Form + Dramatisk)
+    ['form',          'form',           true],
+    ['kanal',         'kanal',          true],
+    ['d_warp_amt',    'dWarpAmt',       true],
+    ['d_warp_freq',   'dWarpFreq',      true],
+    ['d_cell_size',   'dCellSize',      true],
+    ['d_fill',        'dFill',          true],
+    ['d_softness',    'dSoftness',      true],
+    ['d_voids',       'dVoids',         true],
+    ['d_threads',     'dThreads',       true],
+    ['d_stretch',     'dStretch',       true],
+    ['d_glow',        'dGlow',          true],
+    // Seed
+    ['seed',          'seed',           true],
+  ];
+
+  /* ─── Wire sliders ─── */
+  SLIDERS.forEach(([id, param, regen]) => {
+    const el = $(`#${id}`);
+    if (!el || el.type === 'hidden') return;
+    const valEl = el.nextElementSibling;
+
+    function fmt(v) {
+      const step = el.getAttribute('step') || '1';
+      return step.includes('.') ? v.toFixed(step.split('.')[1].length) : String(Math.round(v));
+    }
+    el.addEventListener('input', () => {
+      P[param] = parseFloat(el.value);
+      if (valEl) valEl.textContent = fmt(P[param]);
+      window.SOUR_RENDER?.();
+    });
+    el.addEventListener('change', () => {
+      P[param] = parseFloat(el.value);
+      if (param === 'seed') {
+        window.SOUR_GENERATE?.();
+      } else {
+        // All sliders just re-render on release — no blob regeneration.
+        // This keeps the artwork exactly where you left it.
+        window.SOUR_RENDER?.();
+      }
+    });
+  });
+
+  /* ─── Palette swatches ─── */
+  const palGrid = $('#palettes');
+  PAL.forEach((pal) => {
+    const d = document.createElement('div');
+    d.className = 'pal';
+    d.style.background = `linear-gradient(135deg,${pal.color1} 25%,${pal.color2} 55%,${pal.color3} 80%,${pal.color4})`;
+    d.addEventListener('click', () => {
+      P.color1=pal.color1; P.color2=pal.color2; P.color3=pal.color3; P.color4=pal.color4;
+      syncUI(); window.SOUR_RENDER?.();
+    });
+    palGrid.appendChild(d);
+  });
+
+  /* ─── Beer dropdown ─── */
+  $('#beer-sel').addEventListener('change', e => {
+    window.SOUR_APPLY_PRESET?.(e.target.value);
+    syncUI();
+    window.SOUR_GENERATE?.();
+  });
+
+  /* ─── Colour pickers ─── */
+  ['c1','c2','c3','c4'].forEach((id, i) => {
+    const el = $(`#${id}`);
+    const key = `color${i+1}`;
+    el.addEventListener('input', () => { P[key] = el.value; window.SOUR_RENDER?.(); });
+  });
+
+  /* ─── Label colour pickers ─── */
+  ['lc-shape','lc-letters','lc-text','lc-logo','lc-stroke'].forEach(id => {
+    const el = $(`#${id}`);
+    const key = id.replace('lc-', '');   // shape | letters | text | logo | stroke
+    el.addEventListener('input', () => {
+      window.SOUR_SET_LABEL_COLORS?.({ [key]: el.value });
+    });
+  });
+  function syncLabelColorUI() {
+    const COMP = window.SOUR_COMPOSITION;
+    if (!COMP?.labelColors) return;
+    $('#lc-shape').value   = COMP.labelColors.shape;
+    $('#lc-letters').value = COMP.labelColors.letters;
+    $('#lc-text').value    = COMP.labelColors.text;
+    $('#lc-logo').value    = COMP.labelColors.logo;
+    $('#lc-stroke').value  = COMP.labelColors.stroke;
+  }
+
+  /* ─── Negative toggle ─── */
+  const negT = $('#neg-toggle'), negMRow = $('#neg-mode-row'), negSel = $('#neg-mode');
+  negT.addEventListener('change', () => {
+    P.negative = negT.checked;
+    negMRow.style.display = P.negative ? 'flex' : 'none';
+    window.SOUR_RENDER?.();
+  });
+  negSel.addEventListener('change', () => {
+    P.negativeMode = parseInt(negSel.value); window.SOUR_RENDER?.();
+  });
+
+  /* ─── Randomize ─── */
+  $('#btn-rand').addEventListener('click', () => {
+    window.SOUR_RANDOMIZE?.(); syncUI(); window.SOUR_GENERATE?.();
+  });
+
+  /* ─── Template selector ─── */
+  document.querySelectorAll('.tpl-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = btn.dataset.tpl;
+      const ok = await window.SOUR_SET_TEMPLATE?.(name);
+      if (ok) {
+        document.querySelectorAll('.tpl-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    });
+  });
+  // Sync active state if template changed externally
+  window.SOUR_TEMPLATE_CHANGED = (name) => {
+    document.querySelectorAll('.tpl-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tpl === name);
+    });
+    syncLabelColorUI();
+  };
+
+  /* ─── Export ─── */
+  $('#btn-png').addEventListener('click', () => window.SOUR_EXPORT_PATTERN?.());
+  $('#btn-pdf').addEventListener('click', () => window.SOUR_EXPORT?.('pdf'));
+  
+  /* ─── Collapsible sections ─── */
+  $$('.section-head').forEach(h => {
+    h.addEventListener('click', () => {
+      h.classList.toggle('collapsed');
+      h.nextElementSibling.classList.toggle('collapsed');
+    });
+  });
+
+  /* ─── Sync UI from P ─── */
+  function syncUI() {
+    SLIDERS.forEach(([id, param]) => {
+      const el = $(`#${id}`);
+      if (!el) return;
+      el.value = P[param];
+      const valEl = el.nextElementSibling;
+      if (valEl && valEl.classList.contains('val')) {
+        const step = el.getAttribute('step') || '1';
+        const v = P[param];
+        valEl.textContent = step.includes('.') ? (+v).toFixed(step.split('.')[1].length) : String(Math.round(v));
+      }
+    });
+    $('#c1').value = P.color1; $('#c2').value = P.color2;
+    $('#c3').value = P.color3; $('#c4').value = P.color4;
+    syncLabelColorUI();
+    negT.checked = P.negative;
+    negMRow.style.display = P.negative ? 'flex' : 'none';
+    negSel.value = P.negativeMode;
+    $('#beer-sel').value = P.beer;
+  }
+  window.SOUR_SYNC_UI = syncUI;
+
+  /* ─── Composition view ─── */
+  const compView = $('#composition-view');
+  const patternContainer = $('#canvas-container');
+  patternContainer.classList.add('hidden');
+  compView.classList.add('active');
+
+  function updateCompositionView() {
+    let compCanvas = compView.querySelector('canvas');
+    if (!compCanvas) {
+      compCanvas = document.createElement('canvas');
+      compView.appendChild(compCanvas);
+    }
+    compCanvas.width = 1800; compCanvas.height = 2200;
+    const COMP = window.SOUR_COMPOSITION;
+    if (!COMP?.enabled || !COMP.canImg) return;
+    const ctx = compCanvas.getContext('2d');
+    const W = compCanvas.width, H = compCanvas.height;
+    ctx.fillStyle = '#f5f0eb'; ctx.fillRect(0, 0, W, H);
+    // Beer can
+    const canAspect = COMP.canImg.width / COMP.canImg.height;
+    let canH = H * 1.38, canW = canH * canAspect;
+    if (canW > W * 1.38) { canW = W * 1.38; canH = canW / canAspect; }
+    const canX = (W - canW) / 2;
+    const canY = (H - canH) / 2 - H * 0.2;
+    ctx.drawImage(COMP.canImg, canX, canY, canW, canH);
+    // Label
+    const svgW=581.1, svgH=354.33;
+    const labelW = canW * 0.48, labelH = labelW * (svgH / svgW);
+    const labelX = canX + (canW - labelW) / 2;
+    const labelY = canY + (canH - labelH) / 2 + (COMP.labelYOffset || 0);
+    const patternCanvas = window.SOUR_GET_PATTERN_CANVAS?.();
+    if (patternCanvas) {
+      const labelCanvas = document.createElement('canvas');
+      labelCanvas.width = labelW; labelCanvas.height = labelH;
+      const lctx = labelCanvas.getContext('2d');
+
+      // For Label4, draw pattern in mask area first, then SVG on top (so logo is visible)
+      if (COMP.template === 'Label4' && COMP.svgImg) {
+        const maskH = labelH * (61.4 / svgH);
+        // 1. Draw pattern clipped to MaskingRect region
+        lctx.save();
+        lctx.beginPath();
+        lctx.rect(0, 0, labelW, maskH);
+        lctx.clip();
+        lctx.drawImage(patternCanvas, 0, 0, labelW, labelH);
+        lctx.restore();
+        // 2. Draw SVG on top (logo stays visible)
+        lctx.drawImage(COMP.svgImg, 0, 0, labelW, labelH);
+      } else {
+        lctx.drawImage(patternCanvas, 0, 0, labelW, labelH);
+        if (COMP.svgImg) lctx.drawImage(COMP.svgImg, 0, 0, labelW, labelH);
+      }
+      if (COMP.textureImg) {
+        lctx.globalCompositeOperation = 'overlay';
+        lctx.globalAlpha = 1.5;
+        lctx.drawImage(COMP.textureImg, 0, 0, labelW, labelH);
+        lctx.globalCompositeOperation = 'source-over'; lctx.globalAlpha = 1;
+      }
+      if (COMP.shadowImg) {
+        lctx.globalAlpha = 0.5;
+        lctx.drawImage(COMP.shadowImg, 295, 0, labelW - 620, labelH);
+        lctx.globalAlpha = 1;
+      }
+      ctx.save();
+      ctx.shadowColor='rgba(0,0,0,0.25)'; ctx.shadowBlur=10;
+      ctx.shadowOffsetX=-1; ctx.shadowOffsetY=1;
+      ctx.drawImage(labelCanvas, labelX, labelY);
+      ctx.restore();
+    }
+  }
+  window.SOUR_COMP_UPDATE = updateCompositionView;
+
+  /* ─── Wrap SOUR_GENERATE / RENDER / PREVIEW / SMART_UPDATE ─── */
+  const _gen = window.SOUR_GENERATE, _ren = window.SOUR_RENDER, _pre = window.SOUR_PREVIEW, _smu = window.SOUR_SMART_UPDATE;
+  window.SOUR_GENERATE     = () => { _gen?.(); setTimeout(() => { updateCompositionView(); window.SOUR_COMP_UPDATE?.(); }, 60); };
+  window.SOUR_RENDER       = () => { _ren?.(); setTimeout(() => { updateCompositionView(); window.SOUR_COMP_UPDATE?.(); }, 60); };
+  window.SOUR_PREVIEW      = () => { _pre?.(); setTimeout(() => { updateCompositionView(); window.SOUR_COMP_UPDATE?.(); }, 60); };
+  window.SOUR_SMART_UPDATE = () => { _smu?.(); setTimeout(() => { updateCompositionView(); window.SOUR_COMP_UPDATE?.(); }, 60); };
+
+  /* ─── Init ─── */
+  syncUI();
+  setTimeout(() => { updateCompositionView(); }, 600);
+</script>
+
+<!-- ═══════ 3D VIEW MODULE ═══════ -->
+<script type="module">
+  import {
+    init3DView,
+    applyLiveLabel,
+    applyPresetLabel,
+    onLabelUpdated,
+    start3D,
+    stop3D,
+    BEER_GALLERY,
+  } from './three-view.js';
+
+  const btn3d       = document.getElementById('btn-3d-view');
+  const threeView   = document.getElementById('three-view');
+  const canvasWrap  = document.getElementById('three-canvas-wrap');
+  const gallery     = document.getElementById('three-gallery');
+  const compView    = document.getElementById('composition-view');
+  const topBar      = document.querySelector('.top-bar');
+
+  let is3DActive   = false;
+  let liveMode     = true;   // start with LIVE label active
+
+  // ── Build gallery strip ─────────────────────────────────────────────────────
+  BEER_GALLERY.forEach((item, idx) => {
+    let el;
+    if (item.special === 'live') {
+      // LIVE pill
+      el = document.createElement('div');
+      el.className = 'g-live active';
+      el.dataset.idx = idx;
+      el.innerHTML = `
+        <div class="live-dot-wrap"><span class="live-dot"></span>LIVE</div>
+        <span class="live-label">Aktuel label</span>`;
+    } else {
+      el = document.createElement('div');
+      el.className = 'g-item';
+      el.dataset.idx = idx;
+      const img  = document.createElement('img');
+      img.src    = item.img;
+      img.alt    = item.name;
+      img.loading = 'lazy';
+      const lbl  = document.createElement('span');
+      lbl.textContent = item.name;
+      el.appendChild(img);
+      el.appendChild(lbl);
+    }
+    el.addEventListener('click', () => selectGalleryItem(idx, item, el));
+    gallery.appendChild(el);
+  });
+
+  function selectGalleryItem(idx, item, clickedEl) {
+    // Update active state
+    gallery.querySelectorAll('.g-item, .g-live').forEach(e => e.classList.remove('active'));
+    clickedEl.classList.add('active');
+
+    if (item.special === 'live') {
+      liveMode = true;
+      applyLiveLabel();
+    } else {
+      liveMode = false;
+      applyPresetLabel(item.img);
+    }
+  }
+
+  // ── Label update hook — keep 3D in sync when label changes ─────────────────
+  const _origCompUpdate = window.SOUR_COMP_UPDATE;
+  window.SOUR_COMP_UPDATE = () => {
+    _origCompUpdate?.();
+    if (is3DActive && liveMode) {
+      setTimeout(onLabelUpdated, 80);
+    }
+  };
+
+  // ── Toggle 3D view ──────────────────────────────────────────────────────────
+  btn3d.addEventListener('click', () => {
+    is3DActive = !is3DActive;
+
+    if (is3DActive) {
+      btn3d.classList.add('active');
+      threeView.classList.add('active');
+      compView.style.display = 'none';
+      // Move top-bar inside three-view so it stays visible
+      threeView.style.paddingTop = '0px';
+
+      if (!canvasWrap.querySelector('canvas')) {
+        // First open — initialise
+        init3DView(canvasWrap);
+        // Give GLB a moment to load, then push live label
+        setTimeout(() => { if (liveMode) applyLiveLabel(); }, 1200);
+      } else {
+        start3D();
+        if (liveMode) setTimeout(applyLiveLabel, 60);
+      }
+    } else {
+      btn3d.classList.remove('active');
+      threeView.classList.remove('active');
+      compView.style.display = '';
+      stop3D();
+    }
+  });
+</script>
 </body>
 </html>

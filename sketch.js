@@ -2449,8 +2449,8 @@ window.SOUR_SET_LABEL_COLORS = async (colors) => {
 async function loadCompositionAssets() {
   try {
     COMPOSITION.canImg     = await _loadImage('/BeerCan2.png');
-    COMPOSITION.textureImg = await _loadImage('/papertexture2.jpg');
-    COMPOSITION.shadowImg  = await _loadImage('/shadows.png');
+    COMPOSITION.textureImg = await _loadImage('/papertexture2.jpg').catch(() => null);
+    COMPOSITION.shadowImg  = await _loadImage('/shadows.png').catch(() => null);
 
     // Load default template (Label1)
     await loadTemplate(COMPOSITION.template);

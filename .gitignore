@@ -20,12 +20,12 @@ _splicer.py
 sketch.html
 
 # Loose images not in public/
-mol.jpg
-papertexture2.jpg
-photos/
+/mol.jpg
+/papertexture2.jpg
+/photos/
 
 # Loose copies of public/ assets
-BeerCan.png
-BeerCan2.png
-labeltexture.jpg
-skabelon.svg
+/BeerCan.png
+/BeerCan2.png
+/labeltexture.jpg
+/skabelon.svg
